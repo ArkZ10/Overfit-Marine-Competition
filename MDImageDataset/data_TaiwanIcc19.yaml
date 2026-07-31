@@ -1,0 +1,30 @@
+# Marine Debris Image Dataset - Taiwan ICC 19+1
+# If your YOLO framework expects the default labels path, copy, rename,
+# or symlink train/labels_TaiwanIcc19_train and test/labels_TaiwanIcc19_test to the framework-readable labels path.
+path: ../datasets/Marine_Debris_Image_Dataset
+train: train/images
+test: test/images
+
+nc: 20
+
+names:
+  0: plastic_bottle
+  1: plastic_bottle_cap
+  2: non_pet_food_beverage_container
+  3: non_food_plastic_container
+  4: takeaway_beverage_cup
+  5: straw
+  6: disposable_tableware
+  7: plastic_bag
+  8: food_wrapper
+  9: metal_can
+  10: cigarette_butt
+  11: lighter
+  12: drink_carton
+  13: glass_bottle
+  14: fishing_net_rope
+  15: fishing_buoy_float
+  16: fishing_gear
+  17: syringe_needle
+  18: toothbrush
+  19: other
