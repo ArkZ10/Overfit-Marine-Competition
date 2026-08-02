@@ -1,0 +1,32 @@
+# Dataset — images and generated/staged label files are large and/or
+# regenerable from the tracked metadata CSVs; do not commit them.
+MDImageDataset/*/images/
+MDImageDataset/*/labels_*/
+MDImageDataset/dataset_info/
+
+# Archives
+*.zip
+*.tar.gz
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Training artifacts
+*.pt
+*.pth
+*.onnx
+runs/
+outputs/
+weights/
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
