@@ -3,6 +3,7 @@
 MDImageDataset/*/images/
 MDImageDataset/*/labels_*/
 MDImageDataset/dataset_info/
+MDImageDataset/yolo_split/
 
 # Archives
 *.zip
