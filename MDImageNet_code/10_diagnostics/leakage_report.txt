@@ -1,0 +1,15 @@
+images hashed: 16618 (14957 train + 1661 val), hash=phash8x8, distance threshold <= 5
+total near-duplicate edges (any pair, dist<=5): 58
+cross-split (train<->val) near-duplicate edges: 7
+clusters spanning both train and val: 6
+val images with a train near-duplicate: 6
+val images with a train near-duplicate as % of 1661 val images: 0.3612%
+
+10 example (train_path, val_path, hamming_distance) pairs:
+  MDImageDataset/yolo_split/images/train/2025_TWN_TNN_565.jpg | MDImageDataset/yolo_split/images/val/2025_TWN_TNN_533.jpg | 0
+  MDImageDataset/yolo_split/images/train/2022_TWN_IUH_32.jpg | MDImageDataset/yolo_split/images/val/2022_TWN_IUH_33.jpg | 2
+  MDImageDataset/yolo_split/images/train/2022_TWN_KHH_2113.jpg | MDImageDataset/yolo_split/images/val/2022_TWN_KHH_1829.jpg | 4
+  MDImageDataset/yolo_split/images/train/2022_TWN_KHH_293.jpg | MDImageDataset/yolo_split/images/val/2022_TWN_TPH_1673.jpg | 4
+  MDImageDataset/yolo_split/images/train/2022_TWN_TPH_4269.jpg | MDImageDataset/yolo_split/images/val/2022_TWN_KHH_1829.jpg | 4
+  MDImageDataset/yolo_split/images/train/2024_TWN_IUH_356.jpg | MDImageDataset/yolo_split/images/val/2023_TWN_TTC_5.jpg | 4
+  MDImageDataset/yolo_split/images/train/2025_TWN_TNN_235.jpg | MDImageDataset/yolo_split/images/val/2025_TWN_TNN_252.jpg | 4
