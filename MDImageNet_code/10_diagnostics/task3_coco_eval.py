@@ -86,10 +86,10 @@ def build_gt_coco():
     return coco_gt, stem_to_id, img_files
 
 
-def run_predictions(stem_to_id, img_files):
+def run_predictions(stem_to_id, img_files, weights=WEIGHTS):
     from ultralytics import YOLO
 
-    model = YOLO(str(WEIGHTS))
+    model = YOLO(str(weights))
     predictions = []
     val_dir = img_files[0].parent
     results = model.predict(

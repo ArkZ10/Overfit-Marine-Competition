@@ -31,3 +31,7 @@ weights/
 Thumbs.db
 .vscode/
 .idea/
+
+# Generated training data lists / symlink trees (regenerable via make_rfs_list.py)
+MDImageNet_code/11_improvements/data/
+MDImageNet_code/11_improvements/rfs/*.txt
