@@ -35,3 +35,9 @@ Thumbs.db
 # Generated training data lists / symlink trees (regenerable via make_rfs_list.py)
 MDImageNet_code/11_improvements/data/
 MDImageNet_code/11_improvements/rfs/*.txt
+
+# 12_ensemble outputs (regenerable)
+MDImageNet_code/12_ensemble/preds/
+MDImageNet_code/12_ensemble/scores/
+MDImageNet_code/12_ensemble/data/
+MDImageNet_code/12_ensemble/crops/
