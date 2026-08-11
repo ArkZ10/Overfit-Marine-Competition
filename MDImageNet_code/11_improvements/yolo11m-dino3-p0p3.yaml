@@ -1,0 +1,52 @@
+# YOLO11m with frozen DINOv3 ViT-B/16 injected at P0 (input) and P3 (mid-backbone).
+# Stock yolo11.yaml with two layers added; every other layer and channel width is
+# unchanged, so the backbone/head can load YOLO11m COCO-pretrained weights.
+#
+# Layer 0 is the P0 preprocessor, which shifts all stock indices by +1; layer 6 is
+# the P3 fusion, shifting everything after it by a further +1. Head `from` indices
+# below are rewritten accordingly (P4 cat 6->8, P3 cat 4->6, head P4 13->15,
+# head P5 10->12).
+#
+# c1=512 on the P3 fusion is the scale-m P3 width: make_divisible(min(512, 512) * 1.0, 8).
+# This yaml is therefore scale-m specific, which `scale: m` below pins.
+
+nc: 34
+scale: m
+scales:
+  # [depth, width, max_channels]
+  m: [0.50, 1.00, 512]
+
+backbone:
+  # [from, repeats, module, args]
+  - [-1, 1, DINO3Preprocessor, ['vit_base_patch16_dinov3.lvd1689m', True]] # 0-P0 input enrichment (3->3)
+  - [-1, 1, Conv, [64, 3, 2]] # 1-P1/2
+  - [-1, 1, Conv, [128, 3, 2]] # 2-P2/4
+  - [-1, 2, C3k2, [256, False, 0.25]] # 3
+  - [-1, 1, Conv, [256, 3, 2]] # 4-P3/8
+  - [-1, 2, C3k2, [512, False, 0.25]] # 5 standard P3
+  - [-1, 1, DINO3P3Fusion, [512, 'vit_base_patch16_dinov3.lvd1689m', True]] # 6 DINO-enhanced P3 (512->512)
+  - [-1, 1, Conv, [512, 3, 2]] # 7-P4/16
+  - [-1, 2, C3k2, [512, True]] # 8
+  - [-1, 1, Conv, [1024, 3, 2]] # 9-P5/32
+  - [-1, 2, C3k2, [1024, True]] # 10
+  - [-1, 1, SPPF, [1024, 5]] # 11
+  - [-1, 2, C2PSA, [1024]] # 12
+
+head:
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]] # 13
+  - [[-1, 8], 1, Concat, [1]] # 14 cat backbone P4
+  - [-1, 2, C3k2, [512, False]] # 15
+
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]] # 16
+  - [[-1, 6], 1, Concat, [1]] # 17 cat DINO-enhanced backbone P3
+  - [-1, 2, C3k2, [256, False]] # 18 (P3/8-small)
+
+  - [-1, 1, Conv, [256, 3, 2]] # 19
+  - [[-1, 15], 1, Concat, [1]] # 20 cat head P4
+  - [-1, 2, C3k2, [512, False]] # 21 (P4/16-medium)
+
+  - [-1, 1, Conv, [512, 3, 2]] # 22
+  - [[-1, 12], 1, Concat, [1]] # 23 cat head P5
+  - [-1, 2, C3k2, [1024, True]] # 24 (P5/32-large)
+
+  - [[18, 21, 24], 1, Detect, [nc]] # 25 Detect(P3, P4, P5)

@@ -1,0 +1,11 @@
+{
+  "name": "y11m_control",
+  "weights": "runs/y11m_control/weights/best.pt",
+  "params_total": 20079222,
+  "params_trainable": 20079222,
+  "params_frozen": 0,
+  "checkpoint_mb": 38.68,
+  "gflops_640": 68.33,
+  "latency_ms_per_img_bs1": 6.244,
+  "gpu": "NVIDIA GeForce RTX 3090"
+}

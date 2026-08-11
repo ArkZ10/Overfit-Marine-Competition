@@ -126,3 +126,53 @@ is increasing in `t` — raising it grows the epoch. `make_rfs_list.py` therefor
   11m is ~7.8x the parameters at 1.5x the epochs), so budget ~15–22 h for both sequentially.
 - `yolo11m.pt` auto-downloads into `11_improvements/` on first run (the training script
   chdirs here so it does not litter the repo root).
+
+---
+
+# Phase 2 — DINOv3 ViT-B/16 injected at P0 + P3
+
+Trains on the **Phase 1 winner** (control / non-RFS list) so the numbers are comparable.
+
+## Step 1 — train (~11–13 h estimated)
+
+```bash
+cd /root/Overfit-Marine-Competition/MDImageNet_code/11_improvements
+mkdir -p runs scores
+nohup python3 train_phase2.py > runs/y11m_dino_p0p3.log 2>&1 &
+```
+
+Batch 32 was measured to fit (16.1 GB peak of 24 GB), matching the control, so no
+gradient accumulation is required beyond ultralytics' standard `nbs=64` accumulation
+— identical to Phase 1. `--patience 40` is the default, as used for the RFS run.
+
+## Step 2 — score + measure
+
+```bash
+python3 coco_score.py   --name y11m_dino_p0p3 --weights runs/y11m_dino_p0p3/weights/best.pt
+python3 measure_model.py --name y11m_dino_p0p3 --weights runs/y11m_dino_p0p3/weights/best.pt
+```
+
+## Step 3 — report
+
+```bash
+python3 make_phase2_report.py
+```
+
+Writes `phase2_report.md` and `phase2_per_class.csv`.
+
+## Notes
+
+- **The ViT must be frozen via ultralytics' `freeze=` argument**, not just
+  `requires_grad=False` at construction. `BaseTrainer._setup_train` walks
+  `named_parameters()` and force-enables grad on anything `freeze` does not match —
+  it silently un-froze all 162 ViT tensors during the spike. `train_phase2.py`
+  passes `freeze=["0.trunk.vit"]`; verified with `max|ΔW| = 0.0` after a step.
+- **Weights come from the ungated timm mirror** `vit_base_patch16_dinov3.lvd1689m`.
+  The canonical `facebook/dinov3-vitb16-pretrain-lvd1689m` is `gated=manual` and
+  needs an HF account with an accepted licence, which this environment does not have.
+- **COCO-pretrained YOLO11m weights are remapped**, not `.load()`ed. The two inserted
+  layers shift every stock index (+1 before P3, +2 after), so name-based matching would
+  transfer almost nothing. `load_pretrained()` remaps and transfers 643/827 tensors;
+  it aborts if fewer than 300 land, rather than training a random backbone.
+- **Resume after a crash** rather than restarting: `python3 train_phase2.py --resume`.
+- Re-run the spike any time with `python3 spike_dino3.py`.

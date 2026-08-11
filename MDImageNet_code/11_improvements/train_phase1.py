@@ -36,6 +36,10 @@ def main():
     ap.add_argument("--t", type=float, default=None,
                     help="RFS t (required for --variant rfs); must match a generated data_rfs_t*.yaml")
     ap.add_argument("--batch", type=int, default=None, help="override; skips the OOM ladder")
+    ap.add_argument("--patience", type=int, default=100,
+                    help="stop after N epochs with no improvement (ultralytics default 100). "
+                         "Does not change which checkpoint best.pt holds - that is always the "
+                         "peak-fitness epoch - it only trims the plateau after the peak.")
     ap.add_argument("--resume", action="store_true", help="resume from last.pt of the same run name")
     ap.add_argument("--device", default="0")
     args = ap.parse_args()
@@ -73,6 +77,7 @@ def main():
                 batch=batch,
                 seed=SEED,
                 deterministic=True,
+                patience=args.patience,
                 close_mosaic=CLOSE_MOSAIC,
                 device=args.device,
                 project=str(RUNS_DIR),
