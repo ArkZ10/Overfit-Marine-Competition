@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
-"""Fused detections -> competition submission.csv (ICC19 taxonomy).
+"""Fused detections -> competition submission.csv.
 
-  python3 make_submission.py --dump preds/wbf_test.json --manifest preds/<name>.<split>.meta.json \
+Default taxonomy is NAMR33 (label_id 0-33), matching the published metric:
+"averages the AP values across the 33+1 classes ... using the COCO API".
+`--taxonomy icc19` remaps to the 20-class ICC19 ids instead; keep it only for
+crosswalk analysis, not for submitting.
+
+  python3 make_submission.py --dump preds/wbf_test.json \
       --images-dir <test images> --bbox-format <REQUIRED, see below> --out submission.csv
 
 --bbox-format is REQUIRED and has NO default because example_submission.csv is
@@ -31,13 +36,16 @@ def main():
     ap.add_argument("--bbox-format", required=True,
                     choices=["coco-abs", "yolo-norm-cxcywh", "xyxy-abs"],
                     help="REQUIRED - confirm the organizer's convention first")
+    ap.add_argument("--taxonomy", choices=["namr33", "icc19"], default="namr33",
+                    help="namr33 = the 33+1 classes the competition scores on (default); "
+                         "icc19 = remap to the 20-class taxonomy (analysis only)")
     ap.add_argument("--label-offset", type=int, default=0,
-                    help="0 if label_id is 0-indexed ICC19, 1 if 1-indexed")
+                    help="0 if label_id is 0-indexed, 1 if 1-indexed")
     ap.add_argument("--conf-min", type=float, default=0.001)
     ap.add_argument("--out", default="submission.csv")
     args = ap.parse_args()
 
-    crosswalk = read_crosswalk(CROSSWALK_CSV, "namr33")
+    crosswalk = read_crosswalk(CROSSWALK_CSV, "namr33") if args.taxonomy == "icc19" else None
 
     img_files = sorted(args.images_dir.glob("*.jpg"), key=lambda p: p.stem)
     if not img_files:
@@ -65,7 +73,7 @@ def main():
         else:  # yolo-norm-cxcywh
             ox, oy = (x + bw / 2) / w, (y + bh / 2) / h
             ow, oh = bw / w, bh / h
-        label_id = crosswalk[d["category_id"]] + args.label_offset
+        label_id = (crosswalk[d["category_id"]] if crosswalk else d["category_id"]) + args.label_offset
         rows.append((id_to_file[image_id].name, label_id,
                      round(ox, 6), round(oy, 6), round(ow, 6), round(oh, 6),
                      round(d["score"], 6)))
@@ -76,7 +84,7 @@ def main():
         wcsv.writerow(["image_filename", "label_id", "x", "y", "w", "h", "confidence"])
         wcsv.writerows(rows)
     print(f"wrote {args.out}: {len(rows)} rows over {len(img_files)} images "
-          f"(format={args.bbox_format}, label_offset={args.label_offset})")
+          f"(taxonomy={args.taxonomy}, format={args.bbox_format}, label_offset={args.label_offset})")
 
 
 if __name__ == "__main__":

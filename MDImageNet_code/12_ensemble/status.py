@@ -62,4 +62,5 @@ if __name__ == "__main__":
     show_rtdetr(a.n)
     show_frcnn(a.n)
     print("=" * 62)
-    print("reference: detector A (YOLOv11m) val AP50 = 0.6049 (34-class) / 0.6744 (ICC19)")
+    print("reference — competition metric (34-class NAMR33 AP@0.50, COCO API):")
+    print("  detector A YOLOv11m = 0.6049    A+B+C WBF fused = 0.7017    gate = 0.60")
