@@ -29,13 +29,14 @@ from pycocotools.cocoeval import COCOeval  # noqa: E402
 
 CROP_SIZE = 224
 BG_CLASS = 34
-BASELINE = 0.7017  # Phase-2 fused, competition metric
+BASELINE = None  # set from --baseline; the fused score this must beat
 
 
 @torch.no_grad()
 def compute_probs(dump, weights, images_root, device="cuda:0", batch=256):
-    cache = SCORES_DIR / "rescorer_probs.npy"
-    idx_cache = SCORES_DIR / "rescorer_probs_idx.json"
+    tag = Path(dump).name.split(".")[0]          # cache is per-dump, not global
+    cache = SCORES_DIR / f"rescorer_probs_{tag}.npy"
+    idx_cache = SCORES_DIR / f"rescorer_probs_{tag}_idx.json"
     if cache.exists() and idx_cache.exists():
         print(f"reusing cached probabilities from {cache}")
         return np.load(cache), json.loads(idx_cache.read_text())
@@ -124,12 +125,15 @@ def ap50(gt, dets):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--dump", default=str(PREDS_DIR / "wbf_best.val.json"))
+    ap.add_argument("--dump", default=str(PREDS_DIR / "wbf4_best.val.json"))
+    ap.add_argument("--baseline", type=float, required=True, help="fused AP50 the rescorer must beat")
     ap.add_argument("--weights", default=str(RUNS_DIR / "rescorer" / "best.pth"))
     ap.add_argument("--images-root",
                     default="/root/Overfit-Marine-Competition/MDImageDataset/yolo_split/images/val")
     args = ap.parse_args()
 
+    global BASELINE
+    BASELINE = args.baseline
     probs, scored = compute_probs(args.dump, args.weights, args.images_root)
     scored_set = set(scored)
     dets = json.loads(Path(args.dump).read_text())
@@ -163,9 +167,9 @@ def main():
     if best["delta"] > 0:
         out, _ = apply_variant(dets, probs, scored_set, best["alpha"],
                                best["bg_suppress"], best["reassign"])
-        p = PREDS_DIR / "wbf_best_rescored.val.json"
+        p = PREDS_DIR / (Path(args.dump).name.split(".")[0] + "_rescored.val.json")
         p.write_text(json.dumps(out))
-        (PREDS_DIR / "wbf_best_rescored.val.meta.json").write_text(json.dumps(best, indent=2))
+        (PREDS_DIR / (Path(args.dump).name.split(".")[0] + "_rescored.val.meta.json")).write_text(json.dumps(best, indent=2))
         print(f"wrote {p}")
 
 

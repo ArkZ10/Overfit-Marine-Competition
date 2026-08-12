@@ -23,17 +23,18 @@ DUMPS = [
     PREDS_DIR / "y11m_control.val.json",
     PREDS_DIR / "rtdetr_l.val.json",
     PREDS_DIR / "frcnn_r50v2.val.json",
+    PREDS_DIR / "dfine_l.val.json",
 ]
-AP50 = {"y11m_control": 0.6049, "rtdetr_l": 0.6684, "frcnn_r50v2": 0.5130}
+AP50 = {"y11m_control": 0.6049, "rtdetr_l": 0.6684, "frcnn_r50v2": 0.5130, "dfine_l": 0.5755}
 
 NORMALIZE = ["temperature", "minmax", "none"]
 IOU_THRS = [0.50, 0.55, 0.60, 0.65]
 SKIP_THRS = [0.0, 0.001]
 WEIGHTS = {
-    "equal": [1.0, 1.0, 1.0],
-    "ap50prop": [AP50["y11m_control"], AP50["rtdetr_l"], AP50["frcnn_r50v2"]],
-    "A_heavy": [2.0, 1.0, 1.0],
-    "B_heavy": [1.0, 2.0, 1.0],
+    "equal": [1.0, 1.0, 1.0, 1.0],
+    "ap50prop": [AP50["y11m_control"], AP50["rtdetr_l"], AP50["frcnn_r50v2"], AP50["dfine_l"]],
+    "B_heavy": [1.0, 2.0, 1.0, 1.0],
+    "detr_heavy": [1.0, 2.0, 1.0, 1.5],   # the two DETRs carry the localisation quality
 }
 
 
@@ -72,7 +73,7 @@ def main():
 
     results.sort(key=lambda r: -r["ap50"])
     SCORES_DIR.mkdir(parents=True, exist_ok=True)
-    (SCORES_DIR / "wbf_sweep.json").write_text(json.dumps(results, indent=2))
+    (SCORES_DIR / "wbf4_sweep.json").write_text(json.dumps(results, indent=2))
     print(f"\nswept in {(time.time() - t0) / 60:.1f} min")
 
     print(f"\n=== top {args.topk} ===")
@@ -84,9 +85,9 @@ def main():
     best = results[0]
     fused = fuse([str(p) for p in DUMPS], dims, best["iou_thr"], best["skip_box_thr"],
                  WEIGHTS[best["weights"]], best["normalize"])
-    out = PREDS_DIR / "wbf_best.val.json"
+    out = PREDS_DIR / "wbf4_best.val.json"
     out.write_text(json.dumps(fused))
-    (PREDS_DIR / "wbf_best.val.meta.json").write_text(json.dumps(best, indent=2))
+    (PREDS_DIR / "wbf4_best.val.meta.json").write_text(json.dumps(best, indent=2))
     print(f"\nwrote {out} with the winning config")
 
 

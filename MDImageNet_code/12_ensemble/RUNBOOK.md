@@ -76,8 +76,16 @@ across the 33+1 classes ... using the COCO API". ICC19 is reported only as a sec
 diagnostic — `06_evaluation/eval_yolo_mapped_icc19.py` is a crosswalk analysis tool
 (it defaults to `namr26`), NOT the competition scorer.
 
-Frozen winning config (reuse verbatim for test):
-`--normalize-scores temperature --iou-thr 0.65 --skip-box-thr 0.001 --weights 0.6049 0.6684 0.5130`
+**CURRENT BEST — 4-model + rescorer = 0.7506.** Frozen config, reuse verbatim for test
+(dump order must be A B C D):
+`--normalize-scores temperature --iou-thr 0.65 --skip-box-thr 0.001 --weights 0.6049 0.6684 0.5130 0.5755`
+then `apply_rescorer --alpha 1.0 --bg-suppress`.
+
+| model | val AP@0.50 |
+|---|---|
+| A YOLOv11m 0.6049 · B RT-DETR-l 0.6684 · C Faster R-CNN 0.5130 · **D D-FINE-L 0.5755** | |
+| A+B+C fused 0.7017 → +rescorer 0.7408 | |
+| **A+B+C+D fused 0.7187 → +rescorer 0.7506** | |
 
 Temperatures are already fitted and stored in `scores/*.calib.json` — **never refit on test.**
 
