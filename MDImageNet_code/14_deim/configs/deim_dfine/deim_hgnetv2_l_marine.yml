@@ -1,0 +1,41 @@
+__include__: [
+  './deim_hgnetv2_l_coco.yml',
+]
+
+# ---- marine debris dataset (NAMR33, 34 classes) ----
+# DEIM's CocoDetection with remap_mscoco_category=False uses the raw category_id
+# as the class index, so the jsons carry ids 0-33 directly.
+num_classes: 34
+remap_mscoco_category: False
+
+output_dir: /root/Overfit-Marine-Competition/MDImageNet_code/14_deim/runs/deim_dfine_l
+
+# ---- schedule ----
+# Halved from the 58-epoch COCO recipe (DEIM's own claim is up to 50% less
+# training time), and our plain D-FINE peaked at epoch 10 of 31 on this data, so
+# a 58-epoch fine-tune would be mostly wasted. Ratios kept consistent:
+#   flat_epoch ~ epoches/2 · stop_epoch = epoches - no_aug_epoch (clean tail)
+#   policy     = [warmup, flat_epoch, stop_epoch]
+epoches: 32
+flat_epoch: 16
+no_aug_epoch: 6
+
+train_dataloader:
+  dataset:
+    img_folder: /root/Overfit-Marine-Competition/MDImageDataset/yolo_split/images/train
+    ann_file: /root/Overfit-Marine-Competition/MDImageNet_code/14_deim/data/train_official.json
+    transforms:
+      policy:
+        epoch: [4, 16, 26]
+  collate_fn:
+    mixup_epochs: [4, 16]
+    stop_epoch: 26
+  total_batch_size: 8
+  num_workers: 8
+
+val_dataloader:
+  dataset:
+    img_folder: /root/Overfit-Marine-Competition/MDImageDataset/yolo_split/images/val
+    ann_file: /root/Overfit-Marine-Competition/MDImageNet_code/14_deim/data/val.json
+  total_batch_size: 8
+  num_workers: 8

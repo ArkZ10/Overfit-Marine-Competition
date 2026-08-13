@@ -47,3 +47,8 @@ CLAUDE.md
 
 # 13_dfine outputs
 MDImageNet_code/13_dfine/lists/*.txt
+
+# 14_deim outputs
+MDImageNet_code/14_deim/data/*.json
+MDImageNet_code/14_deim/weights/
+MDImageNet_code/13_dfine/runs/
