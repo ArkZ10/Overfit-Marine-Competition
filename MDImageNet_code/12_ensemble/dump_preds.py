@@ -109,6 +109,14 @@ def predict_dfine(weights: str, img_files, stem_to_id):
     return run_inference(weights, img_files, stem_to_id)
 
 
+def predict_rtmdet(weights: str, img_files, stem_to_id, tta: bool = False):
+    import sys
+    sys.path.insert(0, str(PREDS_DIR.parent.parent / "15_rtmdet"))
+    from predict_rtmdet import run_inference
+
+    return run_inference(weights, img_files, stem_to_id, tta=tta)
+
+
 def predict_deim(weights: str, img_files, stem_to_id):
     import sys
     sys.path.insert(0, str(PREDS_DIR.parent.parent / "14_deim"))
@@ -119,10 +127,12 @@ def predict_deim(weights: str, img_files, stem_to_id):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--model-type", choices=["yolo", "rtdetr", "frcnn", "dfine", "deim"], required=True)
+    ap.add_argument("--model-type", choices=["yolo", "rtdetr", "frcnn", "dfine", "deim", "rtmdet"], required=True)
     ap.add_argument("--weights", required=True)
     ap.add_argument("--name", required=True)
     ap.add_argument("--split", default="val", help="label for the dump; 'val' uses the GT manifest")
+    ap.add_argument("--tta", action="store_true",
+                    help="rtmdet only: mmdet's built-in 3-scale x 2-flip TTA")
     ap.add_argument("--images-dir", type=Path, default=None,
                     help="predict a folder instead of the val split (test/pseudo mode)")
     args = ap.parse_args()
@@ -140,6 +150,8 @@ def main():
         dets = predict_dfine(args.weights, img_files, stem_to_id)
     elif args.model_type == "deim":
         dets = predict_deim(args.weights, img_files, stem_to_id)
+    elif args.model_type == "rtmdet":
+        dets = predict_rtmdet(args.weights, img_files, stem_to_id, tta=args.tta)
     else:
         dets = predict_ultralytics(args.model_type, args.weights, img_files, stem_to_id)
 
