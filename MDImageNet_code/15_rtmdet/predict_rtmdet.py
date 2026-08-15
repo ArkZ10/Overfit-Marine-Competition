@@ -13,14 +13,29 @@ BATCH = 16
 
 
 def run_inference(weights, img_files, stem_to_id, device="cuda:0", config=None,
-                  tta=False, batch=BATCH):
+                  tta=False, batch=BATCH, imgsz=None):
     import torch
     from mmdet.apis import inference_detector, init_detector
     from mmengine.registry import init_default_scope
 
     init_default_scope("mmdet")
     cfg_path = str(config or CONFIG)
-    model = init_detector(cfg_path, str(weights), device=device)
+
+    # torch>=2.6 defaults torch.load(weights_only=True). mmengine checkpoints embed a
+    # message_hub (HistoryBuffer, numpy reconstructors, ...) that the strict unpickler
+    # rejects, and allowlisting them one by one is endless. These checkpoints are ones
+    # we produced, so relax the flag only for the duration of this load.
+    _orig_load = torch.load
+
+    def _trusted_load(*a, **kw):
+        kw["weights_only"] = False
+        return _orig_load(*a, **kw)
+
+    torch.load = _trusted_load
+    try:
+        model = init_detector(cfg_path, str(weights), device=device)
+    finally:
+        torch.load = _orig_load
 
     if tta:  # mmdet ships RTMDet TTA (3 scales x 2 flips) in rtmdet_tta.py
         from mmengine.config import Config
@@ -31,6 +46,12 @@ def run_inference(weights, img_files, stem_to_id, device="cuda:0", config=None,
         tta_model = MODELS.build(cfg.tta_model)
         tta_model.module = model
         model = revert_sync_batchnorm(tta_model)
+
+    if imgsz is not None:  # rescale the test pipeline's Resize for multi-scale TTA
+        for op in model.cfg.test_dataloader.dataset.pipeline:
+            if op.get("type") == "Resize":
+                op["scale"] = (imgsz, imgsz)
+        model.cfg.test_pipeline = model.cfg.test_dataloader.dataset.pipeline
 
     paths = [str(p) for p in img_files]
     stems = [Path(p).stem for p in paths]

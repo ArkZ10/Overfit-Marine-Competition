@@ -57,3 +57,8 @@ MDImageNet_code/13_dfine/runs/
 MDImageNet_code/15_rtmdet/weights/
 MDImageNet_code/15_rtmdet/data/
 MDImageNet_code/14_deim/runs/
+
+# 16_copypaste outputs (regenerable)
+MDImageNet_code/16_copypaste/instances/
+MDImageNet_code/16_copypaste/out/
+MDImageNet_code/16_copypaste/runs/
