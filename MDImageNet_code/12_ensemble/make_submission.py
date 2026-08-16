@@ -74,8 +74,19 @@ def main():
             ox, oy = (x + bw / 2) / w, (y + bh / 2) / h
             ow, oh = bw / w, bh / h
         label_id = (crosswalk[d["category_id"]] if crosswalk else d["category_id"]) + args.label_offset
-        rows.append((id_to_file[image_id].name, label_id,
-                     round(ox, 6), round(oy, 6), round(ow, 6), round(oh, 6),
+        if args.bbox_format == "yolo-norm-cxcywh":
+            box = (round(ox, 6), round(oy, 6), round(ow, 6), round(oh, 6))
+        else:
+            # organiser spec: "xywh requires int, confidence can use floating point".
+            # Clamp to the image and keep w,h >= 1 so rounding can never emit a
+            # zero-area or out-of-frame box.
+            ix, iy = int(round(ox)), int(round(oy))
+            iw, ih = int(round(ow)), int(round(oh))
+            if args.bbox_format == "coco-abs":
+                ix, iy = max(0, min(ix, w - 1)), max(0, min(iy, h - 1))
+                iw, ih = max(1, min(iw, w - ix)), max(1, min(ih, h - iy))
+            box = (ix, iy, iw, ih)
+        rows.append((id_to_file[image_id].name, label_id, *box,
                      round(d["score"], 6)))
 
     rows.sort(key=lambda r: (r[0], -r[6]))

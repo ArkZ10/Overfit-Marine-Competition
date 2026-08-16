@@ -16,8 +16,16 @@
   # only images containing a given class, e.g. 26 anthropogenic_fragment
   python3 visualize.py --n 12 --only-class 26
 
-Reads submission.csv by default; --dump reads a COCO json dump instead.
-Writes to viz/ (gitignored).
+  # several classes at once, one grid, stratified so each class actually appears
+  python3 visualize.py --n 12 --only-class 22 29 --grid
+
+  # TRAINING DATA ground truth (no predictions involved) for a set of classes
+  python3 visualize.py --source gt --split train --only-class 26 22 29 --grid \
+      --out viz_train_gt
+
+Reads submission.csv by default; --dump reads a COCO json dump instead;
+--source gt draws ground-truth boxes only (works for train/val, since only they
+have labels). Writes to viz/ (gitignored) unless --out overrides it.
 """
 import argparse
 import colorsys
@@ -36,6 +44,7 @@ from common import CLASS_NAMES  # noqa: E402
 
 TEST_DIR = Path("/root/Overfit-Marine-Competition/MDImageDataset/test/images")
 VAL_DIR = Path("/root/Overfit-Marine-Competition/MDImageDataset/yolo_split/images/val")
+TRAIN_DIR = Path("/root/Overfit-Marine-Competition/MDImageDataset/yolo_split/images/train")
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 FONT_MONO = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
 NC = 34
@@ -93,7 +102,7 @@ def gt_rows(manifest):
     return by_img
 
 
-def draw_one(img_path, dets, gts=None, conf=0.3, max_side=1400):
+def draw_one(img_path, dets, gts=None, conf=0.3, max_side=1400, show_conf=True):
     im = Image.open(img_path).convert("RGB")
     scale = min(1.0, max_side / max(im.size))
     if scale < 1.0:
@@ -114,7 +123,7 @@ def draw_one(img_path, dets, gts=None, conf=0.3, max_side=1400):
         x, y, w, h = x * scale, y * scale, w * scale, h * scale
         col = COLORS[c]
         dr.rectangle([x, y, x + w, y + h], outline=col + (255,), width=lw)
-        label = f"{CLASS_NAMES[c]} {s:.2f}"
+        label = f"{CLASS_NAMES[c]} {s:.2f}" if show_conf else CLASS_NAMES[c]
         tw = dr.textlength(label, font=font)
         th = fsz + 6
         ty = y - th if y - th >= 0 else y            # flip inside if it would clip off-image
@@ -123,7 +132,10 @@ def draw_one(img_path, dets, gts=None, conf=0.3, max_side=1400):
         dr.text((x + 5, ty + 3), label, font=font,
                 fill=(0, 0, 0) if lum > 140 else (255, 255, 255))
 
-    cap = f"{Path(img_path).name}   {len(kept)} boxes >= {conf}"
+    if show_conf:
+        cap = f"{Path(img_path).name}   {len(kept)} boxes >= {conf}"
+    else:
+        cap = f"{Path(img_path).name}   {len(kept)} ground-truth boxes"
     if gts is not None:
         cap += f"   |  white = ground truth ({len(gts)})"
     cw = dr.textlength(cap, font=mono)
@@ -137,13 +149,20 @@ def main():
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--submission", default="submission.csv")
     ap.add_argument("--dump", default=None, help="use a COCO json dump instead of the csv")
-    ap.add_argument("--manifest", default=None, help="images json for --dump (auto by --split)")
-    ap.add_argument("--split", choices=["test", "val"], default="test")
+    ap.add_argument("--source", choices=["submission", "dump", "gt"], default=None,
+                    help="box source; default is 'dump' if --dump given else 'submission'. "
+                         "'gt' draws ground-truth boxes only -- needs --split train or val, "
+                         "since test has no labels")
+    ap.add_argument("--manifest", default=None, help="images json (auto by --split)")
+    ap.add_argument("--split", choices=["test", "val", "train"], default="test")
     ap.add_argument("--image", default=None, help="one filename")
     ap.add_argument("--n", type=int, default=12, help="how many random images")
     ap.add_argument("--conf", type=float, default=0.3)
-    ap.add_argument("--only-class", type=int, default=None,
-                    help="only images with a prediction of this class above --conf")
+    ap.add_argument("--only-class", type=int, nargs="+", default=None,
+                    help="only images containing one of these class ids (space-separated). "
+                         "With --grid, sampling is STRATIFIED across them so every requested "
+                         "class actually shows up instead of the grid being dominated by "
+                         "whichever class has the most images.")
     ap.add_argument("--show-gt", action="store_true", help="overlay ground truth (val only)")
     ap.add_argument("--grid", action="store_true", help="one contact sheet instead of N files")
     ap.add_argument("--cols", type=int, default=4)
@@ -151,34 +170,71 @@ def main():
     ap.add_argument("--out", default="viz")
     args = ap.parse_args()
 
-    img_dir = TEST_DIR if args.split == "test" else VAL_DIR
-    manifest = args.manifest or str(
-        HERE / "preds" / ("gt_test_manifest.json" if args.split == "test"
-                          else "gt_val_namr33.json"))
+    dirs = {"test": TEST_DIR, "val": VAL_DIR, "train": TRAIN_DIR}
+    img_dir = dirs[args.split]
+    default_manifest = {
+        "test": "gt_test_manifest.json",
+        "val": "gt_val_namr33.json",
+        "train": str((HERE.parent / "14_deim" / "data" / "train_official.json")),
+    }[args.split]
+    manifest = args.manifest or (default_manifest if "/" in default_manifest
+                                 else str(HERE / "preds" / default_manifest))
 
-    if args.dump:
+    source = args.source or ("dump" if args.dump else "submission")
+    if source == "gt" and args.split == "test":
+        raise SystemExit("--source gt needs --split train or val; test has no labels")
+
+    show_conf = True
+    if source == "dump":
         by_img = rows_from_dump(args.dump, manifest)
         src = args.dump
+    elif source == "gt":
+        raw = gt_rows(manifest)                      # {file: [(cls, bbox), ...]}
+        by_img = {f: [(c, b, 1.0) for c, b in v] for f, v in raw.items()}
+        src = f"{manifest}  (ground truth, {args.split})"
+        show_conf = False
     else:
         by_img = rows_from_submission(args.submission)
         src = args.submission
-    gts = gt_rows(manifest) if args.show_gt else None
+    gts = gt_rows(manifest) if (args.show_gt and source != "gt") else None
 
     if args.image:
         picks = [args.image]
+    elif args.only_class and len(args.only_class) > 1:
+        # stratified: sample per requested class so a grid always shows all of them,
+        # rather than random sampling letting the most common class crowd out the rest
+        rng = random.Random(args.seed)
+        per_class = -(-args.n // len(args.only_class))   # ceil
+        picks, seen = [], set()
+        for cls in args.only_class:
+            pool = [f for f in sorted(by_img)
+                    if f not in seen
+                    and any(c == cls and s >= args.conf for c, _, s in by_img[f])]
+            if not pool:
+                print(f"  (no image has class {cls} '{CLASS_NAMES[cls]}' above conf {args.conf})")
+                continue
+            rng.shuffle(pool)
+            for f in pool[:per_class]:
+                picks.append(f)
+                seen.add(f)
+        rng.shuffle(picks)
+        picks = picks[:args.n] if len(picks) > args.n else picks
     else:
         pool = sorted(by_img)
         if args.only_class is not None:
+            classes = set(args.only_class)
             pool = [f for f in pool
-                    if any(c == args.only_class and s >= args.conf for c, _, s in by_img[f])]
+                    if any(c in classes and s >= args.conf for c, _, s in by_img[f])]
             if not pool:
-                raise SystemExit(f"no image has class {args.only_class} above conf {args.conf}")
+                raise SystemExit(f"no image has class(es) {args.only_class} above conf {args.conf}")
         random.Random(args.seed).shuffle(pool)
         picks = pool[:args.n]
 
     out = HERE / args.out
     out.mkdir(exist_ok=True)
-    print(f"source: {src}   images: {len(picks)}   conf >= {args.conf}")
+    tag = ("_".join(str(c) for c in args.only_class)) if args.only_class else None
+    print(f"source: {src}   images: {len(picks)}   conf >= {args.conf}"
+          + (f"   classes: {tag}" if tag else ""))
 
     ims = []
     for fn in picks:
@@ -187,7 +243,7 @@ def main():
             print(f"  missing {p}")
             continue
         im = draw_one(p, by_img.get(fn, []), gts.get(fn) if gts else None, args.conf,
-                      max_side=700 if args.grid else 1400)
+                      max_side=700 if args.grid else 1400, show_conf=show_conf)
         ims.append((fn, im))
         if not args.grid:
             dst = out / f"{Path(fn).stem}_pred.jpg"
@@ -208,7 +264,8 @@ def main():
             ox = (k % cols) * cell + (cell - im2.width) // 2
             oy = (k // cols) * cell + (cell - im2.height) // 2
             sheet.paste(im2, (ox, oy))
-        dst = out / f"grid_{args.split}_conf{args.conf}.jpg"
+        namebit = f"_classes_{tag}" if tag else ""
+        dst = out / f"grid_{args.split}_{source}_conf{args.conf}{namebit}.jpg"
         sheet.save(dst, quality=90)
         print(f"  wrote {dst}  ({sheet.width}x{sheet.height})")
 
