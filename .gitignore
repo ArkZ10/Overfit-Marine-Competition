@@ -62,3 +62,18 @@ MDImageNet_code/14_deim/runs/
 MDImageNet_code/16_copypaste/instances/
 MDImageNet_code/16_copypaste/out/
 MDImageNet_code/16_copypaste/runs/
+MDImageNet_code/12_ensemble/viz/
+
+# 17_rfdetr: the Roboflow-layout dataset is a SYMLINK TREE into MDImageDataset
+# (15,240 links). Committing it adds thousands of files that point outside the
+# repo and break in any fresh checkout. Regenerate with:
+#   python3 17_rfdetr/build_dataset.py
+MDImageNet_code/17_rfdetr/data/
+MDImageNet_code/17_rfdetr/data_spike/
+MDImageNet_code/17_rfdetr/runs/
+
+# Rendered prediction overlays (regenerable via 12_ensemble/visualize.py)
+MDImageNet_code/12_ensemble/viz/
+
+# Diagnostic renders (regenerable via plot_confusion.py / inspect_fp.py)
+MDImageNet_code/12_ensemble/*.png

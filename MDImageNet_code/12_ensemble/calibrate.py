@@ -114,10 +114,19 @@ def main():
     ap.add_argument("--dump", required=True)
     ap.add_argument("--gt", default=str(GT_VAL_JSON))
     ap.add_argument("--name", required=True)
+    ap.add_argument("--half", choices=["full", "fit", "sel"], default="full",
+                    help="fit the temperature on one half of the make_val_split.py "
+                         "split. Detections outside that half must be dropped, or "
+                         "they are all counted as false positives and skew T.")
     args = ap.parse_args()
 
+    gt_path = args.gt if args.half == "full" else str(
+        GT_VAL_JSON.parent / f"gt_val_{args.half}_namr33.json")
     dets = json.loads(open(args.dump).read())
-    gt = json.loads(open(args.gt).read())
+    gt = json.loads(open(gt_path).read())
+    if args.half != "full":
+        keep = {im["id"] for im in gt["images"]}
+        dets = [d for d in dets if d["image_id"] in keep]
 
     scores, correct = match_detections(dets, gt["annotations"])
     T = fit_temperature(scores, correct)
@@ -127,6 +136,7 @@ def main():
     result = {
         "name": args.name,
         "dump": args.dump,
+        "half": args.half,
         "temperature": round(T, 4),
         "n_detections": len(scores),
         "n_matched_correct": int(correct.sum()),

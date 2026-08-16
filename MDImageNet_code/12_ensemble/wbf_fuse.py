@@ -65,7 +65,8 @@ def normalize_scores(dets, mode, model_name):
     raise ValueError(mode)
 
 
-def fuse(dump_paths, dims, iou_thr, skip_box_thr, weights, norm_mode):
+def fuse(dump_paths, dims, iou_thr, skip_box_thr, weights, norm_mode,
+         conf_type="avg"):
     models = []
     for p in dump_paths:
         name = Path(p).name.split(".")[0]
@@ -99,6 +100,7 @@ def fuse(dump_paths, dims, iou_thr, skip_box_thr, weights, norm_mode):
         fb, fs, fl = weighted_boxes_fusion(
             boxes_list, scores_list, labels_list,
             weights=weights, iou_thr=iou_thr, skip_box_thr=skip_box_thr,
+            conf_type=conf_type,
         )
         for (x1, y1, x2, y2), s, lb in zip(fb, fs, fl):
             fused.append({
@@ -120,6 +122,15 @@ def main():
     ap.add_argument("--skip-box-thr", type=float, default=0.001)
     ap.add_argument("--weights", nargs="+", type=float, default=None)
     ap.add_argument("--normalize-scores", choices=["none", "temperature", "minmax"], default="none")
+    ap.add_argument("--conf-type",
+                    choices=["avg", "max", "box_and_model_avg",
+                             "absent_model_aware_avg"],
+                    default="avg",
+                    help="how WBF sets a fused box score. 'avg' (the default, and "
+                         "what every result so far used) rescales by "
+                         "min(n_models, n_boxes)/weights.sum(), so a box only one "
+                         "member found is multiplied by 1/weights.sum(). 'max' "
+                         "drops that penalty (divides by weights.max() instead).")
     args = ap.parse_args()
 
     if args.weights is not None and len(args.weights) != len(args.dumps):
@@ -127,7 +138,7 @@ def main():
 
     dims = load_dims(args.gt)
     fused = fuse(args.dumps, dims, args.iou_thr, args.skip_box_thr, args.weights,
-                 args.normalize_scores)
+                 args.normalize_scores, args.conf_type)
     Path(args.out).write_text(json.dumps(fused))
     meta = {
         "dumps": [str(p) for p in args.dumps],
@@ -135,6 +146,7 @@ def main():
         "skip_box_thr": args.skip_box_thr,
         "weights": args.weights,
         "normalize_scores": args.normalize_scores,
+        "conf_type": args.conf_type,
         "n_fused": len(fused),
     }
     Path(str(args.out).replace(".json", ".meta.json")).write_text(json.dumps(meta, indent=2))

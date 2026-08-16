@@ -125,9 +125,17 @@ def predict_deim(weights: str, img_files, stem_to_id):
     return run_inference(weights, img_files, stem_to_id)
 
 
+def predict_rfdetr(weights: str, img_files, stem_to_id):
+    import sys
+    sys.path.insert(0, str(PREDS_DIR.parent.parent / "17_rfdetr"))
+    from predict_rfdetr import run_inference
+
+    return run_inference(weights, img_files, stem_to_id)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--model-type", choices=["yolo", "rtdetr", "frcnn", "dfine", "deim", "rtmdet"], required=True)
+    ap.add_argument("--model-type", choices=["yolo", "rtdetr", "frcnn", "dfine", "deim", "rtmdet", "rfdetr"], required=True)
     ap.add_argument("--weights", required=True)
     ap.add_argument("--name", required=True)
     ap.add_argument("--split", default="val", help="label for the dump; 'val' uses the GT manifest")
@@ -152,6 +160,8 @@ def main():
         dets = predict_deim(args.weights, img_files, stem_to_id)
     elif args.model_type == "rtmdet":
         dets = predict_rtmdet(args.weights, img_files, stem_to_id, tta=args.tta)
+    elif args.model_type == "rfdetr":
+        dets = predict_rfdetr(args.weights, img_files, stem_to_id)
     else:
         dets = predict_ultralytics(args.model_type, args.weights, img_files, stem_to_id)
 

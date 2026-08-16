@@ -25,11 +25,21 @@ from pycocotools.coco import COCO  # noqa: E402
 from pycocotools.cocoeval import COCOeval  # noqa: E402
 
 
-def load_gt():
-    if not GT_VAL_JSON.exists():
-        raise SystemExit(f"{GT_VAL_JSON} missing - run dump_preds.py --split val once first")
+def gt_path(half="full"):
+    if half == "full":
+        return GT_VAL_JSON
+    p = GT_VAL_JSON.parent / f"gt_val_{half}_namr33.json"
+    if not p.exists():
+        raise SystemExit(f"{p} missing - run make_val_split.py first")
+    return p
+
+
+def load_gt(half="full"):
+    p = gt_path(half)
+    if not p.exists():
+        raise SystemExit(f"{p} missing - run dump_preds.py --split val once first")
     with contextlib.redirect_stdout(io.StringIO()):
-        gt = COCO(str(GT_VAL_JSON))
+        gt = COCO(str(p))
     return gt
 
 
@@ -91,9 +101,14 @@ def score_icc19(gt: COCO, dets: list[dict]):
     }
 
 
-def score(dump_path, name):
+def score(dump_path, name, half="full"):
     dets = json.loads(open(dump_path).read())
-    gt = load_gt()
+    gt = load_gt(half)
+    if half != "full":
+        # a dump covers all of val; keep only this half's images so COCOeval sees
+        # exactly the image set its GT declares
+        keep = set(gt.getImgIds())
+        dets = [d for d in dets if d["image_id"] in keep]
 
     n33 = score_namr33(gt, dets)
     icc = score_icc19(gt, dets)
@@ -101,6 +116,8 @@ def score(dump_path, name):
     result = {
         "name": name,
         "dump": str(dump_path),
+        "half": half,
+        "n_images": len(gt.getImgIds()),
         "n_detections": len(dets),
         "namr33": n33,
         "icc19": icc,
@@ -118,5 +135,8 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--dump", required=True)
     ap.add_argument("--name", required=True)
+    ap.add_argument("--half", choices=["full", "fit", "sel"], default="full",
+                    help="score against the whole val set, or one half of the "
+                         "make_val_split.py split (tune on fit, confirm on sel)")
     a = ap.parse_args()
-    score(a.dump, a.name)
+    score(a.dump, a.name, a.half)
