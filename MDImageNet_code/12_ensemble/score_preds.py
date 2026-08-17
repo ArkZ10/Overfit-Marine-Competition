@@ -13,6 +13,7 @@ import contextlib
 import copy
 import io
 import json
+from pathlib import Path
 
 import numpy as np
 
@@ -34,8 +35,8 @@ def gt_path(half="full"):
     return p
 
 
-def load_gt(half="full"):
-    p = gt_path(half)
+def load_gt(half="full", explicit_gt=None):
+    p = explicit_gt or gt_path(half)
     if not p.exists():
         raise SystemExit(f"{p} missing - run dump_preds.py --split val once first")
     with contextlib.redirect_stdout(io.StringIO()):
@@ -101,10 +102,10 @@ def score_icc19(gt: COCO, dets: list[dict]):
     }
 
 
-def score(dump_path, name, half="full"):
+def score(dump_path, name, half="full", explicit_gt=None):
     dets = json.loads(open(dump_path).read())
-    gt = load_gt(half)
-    if half != "full":
+    gt = load_gt(half, explicit_gt)
+    if half != "full" or explicit_gt is not None:
         # a dump covers all of val; keep only this half's images so COCOeval sees
         # exactly the image set its GT declares
         keep = set(gt.getImgIds())
@@ -138,5 +139,7 @@ if __name__ == "__main__":
     ap.add_argument("--half", choices=["full", "fit", "sel"], default="full",
                     help="score against the whole val set, or one half of the "
                          "make_val_split.py split (tune on fit, confirm on sel)")
+    ap.add_argument("--gt", type=Path, default=None,
+                    help="explicit COCO GT; use this for clean/custom splits")
     a = ap.parse_args()
-    score(a.dump, a.name, a.half)
+    score(a.dump, a.name, a.half, a.gt)

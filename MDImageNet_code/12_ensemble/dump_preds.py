@@ -52,6 +52,20 @@ def dir_manifest(images_dir: Path):
     return stem_to_id, img_files, f"sorted-stem enumerate of {images_dir}"
 
 
+def coco_manifest(gt_json: Path, images_dir: Path):
+    """Use the exact image IDs and filenames recorded in a COCO annotation file."""
+    gt = json.loads(gt_json.read_text())
+    rows = sorted(gt["images"], key=lambda im: int(im["id"]))
+    img_files = [images_dir / im["file_name"] for im in rows]
+    missing = [str(p) for p in img_files if not p.is_file()]
+    if missing:
+        raise SystemExit(f"{len(missing)} COCO images are missing; first: {missing[0]}")
+    stem_to_id = {Path(im["file_name"]).stem: int(im["id"]) for im in rows}
+    if len(stem_to_id) != len(rows):
+        raise SystemExit("COCO manifest contains duplicate filename stems")
+    return stem_to_id, img_files, f"COCO ids from {gt_json}"
+
+
 def predict_ultralytics(model_type: str, weights: str, img_files, stem_to_id):
     from ultralytics import RTDETR, YOLO
 
@@ -101,28 +115,28 @@ def predict_frcnn(weights: str, img_files, stem_to_id):
     return run_inference(weights, img_files, stem_to_id)
 
 
-def predict_dfine(weights: str, img_files, stem_to_id):
+def predict_dfine(weights: str, img_files, stem_to_id, config=None):
     import sys
     sys.path.insert(0, str(PREDS_DIR.parent.parent / "13_dfine"))
     from predict_dfine import run_inference
 
-    return run_inference(weights, img_files, stem_to_id)
+    return run_inference(weights, img_files, stem_to_id, config=config)
 
 
-def predict_rtmdet(weights: str, img_files, stem_to_id, tta: bool = False):
+def predict_rtmdet(weights: str, img_files, stem_to_id, tta: bool = False, config=None):
     import sys
     sys.path.insert(0, str(PREDS_DIR.parent.parent / "15_rtmdet"))
     from predict_rtmdet import run_inference
 
-    return run_inference(weights, img_files, stem_to_id, tta=tta)
+    return run_inference(weights, img_files, stem_to_id, tta=tta, config=config)
 
 
-def predict_deim(weights: str, img_files, stem_to_id):
+def predict_deim(weights: str, img_files, stem_to_id, config=None):
     import sys
     sys.path.insert(0, str(PREDS_DIR.parent.parent / "14_deim"))
     from predict_deim import run_inference
 
-    return run_inference(weights, img_files, stem_to_id)
+    return run_inference(weights, img_files, stem_to_id, config=config)
 
 
 def predict_rfdetr(weights: str, img_files, stem_to_id):
@@ -143,9 +157,18 @@ def main():
                     help="rtmdet only: mmdet's built-in 3-scale x 2-flip TTA")
     ap.add_argument("--images-dir", type=Path, default=None,
                     help="predict a folder instead of the val split (test/pseudo mode)")
+    ap.add_argument("--gt", type=Path, default=None,
+                    help="COCO annotation manifest supplying exact image IDs/filenames")
+    ap.add_argument("--model-config", type=Path, default=None,
+                    help="explicit detector config (needed for clean/custom rebuilds)")
     args = ap.parse_args()
 
-    if args.images_dir is not None:
+    if args.gt is not None:
+        if args.images_dir is None:
+            ap.error("--gt requires --images-dir")
+        split = args.split
+        stem_to_id, img_files, manifest_src = coco_manifest(args.gt, args.images_dir)
+    elif args.images_dir is not None:
         split = args.split if args.split != "val" else args.images_dir.name
         stem_to_id, img_files, manifest_src = dir_manifest(args.images_dir)
     else:
@@ -155,11 +178,12 @@ def main():
     if args.model_type == "frcnn":
         dets = predict_frcnn(args.weights, img_files, stem_to_id)
     elif args.model_type == "dfine":
-        dets = predict_dfine(args.weights, img_files, stem_to_id)
+        dets = predict_dfine(args.weights, img_files, stem_to_id, config=args.model_config)
     elif args.model_type == "deim":
-        dets = predict_deim(args.weights, img_files, stem_to_id)
+        dets = predict_deim(args.weights, img_files, stem_to_id, config=args.model_config)
     elif args.model_type == "rtmdet":
-        dets = predict_rtmdet(args.weights, img_files, stem_to_id, tta=args.tta)
+        dets = predict_rtmdet(args.weights, img_files, stem_to_id, tta=args.tta,
+                              config=args.model_config)
     elif args.model_type == "rfdetr":
         dets = predict_rfdetr(args.weights, img_files, stem_to_id)
     else:
@@ -173,6 +197,7 @@ def main():
         "split": split,
         "model_type": args.model_type,
         "weights": str(Path(args.weights).resolve()),
+        "model_config": str(args.model_config.resolve()) if args.model_config else None,
         "conf": CONF_THR,
         "nms_iou": NMS_IOU,
         "max_det": MAX_DET,

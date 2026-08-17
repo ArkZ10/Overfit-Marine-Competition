@@ -38,6 +38,10 @@ MEMBERS = {
     "E": ("deim_dfine_l", 1.4),      # E-heavy, as in the frozen config
     "F": ("rtmdet_l", 0.6608),
     "H": ("rfdetr_l", 0.6662),
+    # S = RTMDet-L head on a Swin-L/ImageNet-22k backbone. Same head, neck and
+    # training list as F -- only the backbone differs -- so expect S and F to be
+    # highly correlated and for S to displace F rather than stack with it.
+    "S": ("rtmdet_swinl", 0.7032),
 }
 IOU, SKIP, NORM, CONF_TYPE = 0.65, 0.001, "temperature", "avg"
 

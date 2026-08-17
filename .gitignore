@@ -4,7 +4,7 @@ MDImageDataset/*/images/
 MDImageDataset/*/labels_*/
 MDImageDataset/dataset_info/
 MDImageDataset/yolo_split/
-
+MDImageDataset2/*/
 # Archives
 *.zip
 *.tar.gz
@@ -70,7 +70,12 @@ MDImageNet_code/12_ensemble/viz/
 #   python3 17_rfdetr/build_dataset.py
 MDImageNet_code/17_rfdetr/data/
 MDImageNet_code/17_rfdetr/data_spike/
+MDImageNet_code/17_rfdetr/data_clean/
+MDImageNet_code/17_rfdetr/data_clean_spike/
 MDImageNet_code/17_rfdetr/runs/
+
+# 18_official_rebuild generated COCO splits/lists (deterministic, seed 42)
+MDImageNet_code/18_official_rebuild/data/
 
 # Rendered prediction overlays (regenerable via 12_ensemble/visualize.py)
 MDImageNet_code/12_ensemble/viz/
