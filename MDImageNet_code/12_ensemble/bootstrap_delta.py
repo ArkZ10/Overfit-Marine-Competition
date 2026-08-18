@@ -61,12 +61,13 @@ def main():
     ap.add_argument("--a", required=True, help="baseline dump")
     ap.add_argument("--b", required=True, help="candidate dump")
     ap.add_argument("--half", choices=["full", "fit", "sel"], default="full")
+    ap.add_argument("--gt", help="explicit COCO ground truth (overrides --half path lookup)")
     ap.add_argument("-n", type=int, default=300, help="bootstrap resamples")
     ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
 
-    gtp = GT_VAL_JSON if args.half == "full" else \
-        GT_VAL_JSON.parent / f"gt_val_{args.half}_namr33.json"
+    gtp = Path(args.gt) if args.gt else (GT_VAL_JSON if args.half == "full" else
+        GT_VAL_JSON.parent / f"gt_val_{args.half}_namr33.json")
     gt_dict = json.loads(Path(gtp).read_text())
     da = json.loads(Path(args.a).read_text())
     db = json.loads(Path(args.b).read_text())

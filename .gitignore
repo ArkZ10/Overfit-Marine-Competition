@@ -41,6 +41,9 @@ MDImageNet_code/12_ensemble/preds/
 MDImageNet_code/12_ensemble/scores/
 MDImageNet_code/12_ensemble/data/
 MDImageNet_code/12_ensemble/crops/
+MDImageNet_code/12_ensemble/safe_crops/
+MDImageNet_code/12_ensemble/viz_train_gt/
+MDImageNet_code/12_ensemble/viz_submission_foam/
 
 # Local operating context for Claude (not part of the submission)
 CLAUDE.md
@@ -74,8 +77,10 @@ MDImageNet_code/17_rfdetr/data_clean/
 MDImageNet_code/17_rfdetr/data_clean_spike/
 MDImageNet_code/17_rfdetr/runs/
 
-# 18_official_rebuild generated COCO splits/lists (deterministic, seed 42)
+# 18_official_rebuild generated COCO splits/lists (deterministic, seed 42) and
+# its rendered review images (regenerable via render_consensus_review.py)
 MDImageNet_code/18_official_rebuild/data/
+MDImageNet_code/18_official_rebuild/*.png
 
 # Rendered prediction overlays (regenerable via 12_ensemble/visualize.py)
 MDImageNet_code/12_ensemble/viz/

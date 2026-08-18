@@ -33,21 +33,22 @@ BASELINE = None  # set from --baseline; the fused score this must beat
 
 
 @torch.no_grad()
-def compute_probs(dump, weights, images_root, device="cuda:0", batch=256):
-    tag = Path(dump).name.split(".")[0]          # cache is per-dump, not global
+def compute_probs(dump, weights, images_root, gt_path, device="cuda:0", batch=256):
+    tag = (Path(dump).name.split(".")[0] + "_" + Path(weights).parent.name +
+           "_" + Path(gt_path).stem)
     cache = SCORES_DIR / f"rescorer_probs_{tag}.npy"
     idx_cache = SCORES_DIR / f"rescorer_probs_{tag}_idx.json"
     if cache.exists() and idx_cache.exists():
         print(f"reusing cached probabilities from {cache}")
         return np.load(cache), json.loads(idx_cache.read_text())
 
-    model = build_model(torch.device(device))
+    model = build_model(torch.device(device), pretrained=False)
     ck = torch.load(weights, map_location=device, weights_only=False)
     model.load_state_dict(ck["model"])
     model.eval()
     print(f"loaded rescorer (val_acc={ck.get('acc')})")
 
-    gt = json.loads(GT_VAL_JSON.read_text())
+    gt = json.loads(Path(gt_path).read_text())
     info = {im["id"]: im for im in gt["images"]}
     dets = json.loads(Path(dump).read_text())
     by_img = defaultdict(list)
@@ -130,15 +131,19 @@ def main():
     ap.add_argument("--weights", default=str(RUNS_DIR / "rescorer" / "best.pth"))
     ap.add_argument("--images-root",
                     default="/root/Overfit-Marine-Competition/MDImageDataset/yolo_split/images/val")
+    ap.add_argument("--gt", default=str(GT_VAL_JSON),
+                    help="COCO GT/manifest matching --dump image IDs")
+    ap.add_argument("--device", default="cuda:0")
     args = ap.parse_args()
 
     global BASELINE
     BASELINE = args.baseline
-    probs, scored = compute_probs(args.dump, args.weights, args.images_root)
+    probs, scored = compute_probs(args.dump, args.weights, args.images_root, args.gt,
+                                  device=args.device)
     scored_set = set(scored)
     dets = json.loads(Path(args.dump).read_text())
     with contextlib.redirect_stdout(io.StringIO()):
-        gt = COCO(str(GT_VAL_JSON))
+        gt = COCO(args.gt)
 
     variants = []
     for alpha in (0.25, 0.5, 1.0):

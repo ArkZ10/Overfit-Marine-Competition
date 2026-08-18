@@ -46,7 +46,7 @@ def main():
     args = ap.parse_args()
 
     device = torch.device(args.device)
-    model = build_model(device)
+    model = build_model(device, pretrained=False)
     ck = torch.load(args.weights, map_location=device, weights_only=False)
     model.load_state_dict(ck["model"])
     model.eval()

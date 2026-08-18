@@ -61,14 +61,14 @@ class CropDataset(Dataset):
         return t, label
 
 
-def build_model(device):
+def build_model(device, pretrained=True):
     import timm
 
     try:
-        m = timm.create_model(MODEL, pretrained=True, num_classes=N_CLASSES)
+        m = timm.create_model(MODEL, pretrained=pretrained, num_classes=N_CLASSES)
     except Exception as e:  # noqa: BLE001
         print(f"{MODEL} failed ({e}); falling back to {FALLBACK}")
-        m = timm.create_model(FALLBACK, pretrained=True, num_classes=N_CLASSES)
+        m = timm.create_model(FALLBACK, pretrained=pretrained, num_classes=N_CLASSES)
     return m.to(device)
 
 
