@@ -46,8 +46,10 @@ def main():
     args = ap.parse_args()
 
     device = torch.device(args.device)
-    model = build_model(device, pretrained=False)
     ck = torch.load(args.weights, map_location=device, weights_only=False)
+    model_name = ck.get("provenance", {}).get(
+        "model", "convnext_tiny.fb_in22k_ft_in1k")
+    model = build_model(device, pretrained=False, model_name=model_name)
     model.load_state_dict(ck["model"])
     model.eval()
 

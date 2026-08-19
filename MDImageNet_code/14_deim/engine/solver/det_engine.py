@@ -7,6 +7,7 @@ Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
 """
 
 
+import os
 import sys
 import math
 from typing import Iterable
@@ -39,6 +40,22 @@ def train_one_epoch(self_lr_scheduler, lr_scheduler, model: torch.nn.Module, cri
 
     cur_iters = epoch * len(data_loader)
 
+    amp_dtype_name = os.environ.get('DEIM_AMP_DTYPE', 'float16').lower()
+    amp_dtypes = {
+        'float16': torch.float16,
+        'fp16': torch.float16,
+        'bfloat16': torch.bfloat16,
+        'bf16': torch.bfloat16,
+    }
+    if amp_dtype_name not in amp_dtypes:
+        raise ValueError(
+            f"Unsupported DEIM_AMP_DTYPE={amp_dtype_name!r}; "
+            "use float16 or bfloat16"
+        )
+    amp_dtype = amp_dtypes[amp_dtype_name]
+    if scaler is not None:
+        print(f"AMP autocast dtype: {amp_dtype}")
+
     for i, (samples, targets) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
         samples = samples.to(device)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
@@ -46,7 +63,9 @@ def train_one_epoch(self_lr_scheduler, lr_scheduler, model: torch.nn.Module, cri
         metas = dict(epoch=epoch, step=i, global_step=global_step, epoch_step=len(data_loader))
 
         if scaler is not None:
-            with torch.autocast(device_type=str(device), cache_enabled=True):
+            with torch.autocast(
+                device_type=str(device), dtype=amp_dtype, cache_enabled=True
+            ):
                 outputs = model(samples, targets=targets)
 
             if torch.isnan(outputs['pred_boxes']).any() or torch.isinf(outputs['pred_boxes']).any():

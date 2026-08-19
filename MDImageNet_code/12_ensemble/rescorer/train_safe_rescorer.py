@@ -51,6 +51,7 @@ def main():
     ap.add_argument('--epochs', type=int, default=20)
     ap.add_argument('--batch', type=int, default=256)
     ap.add_argument('--lr', type=float, default=3e-4)
+    ap.add_argument('--model', default='convnext_tiny.fb_in22k_ft_in1k')
     args = ap.parse_args()
 
     random.seed(SEED); np.random.seed(SEED); torch.manual_seed(SEED)
@@ -62,7 +63,7 @@ def main():
     val_loader = DataLoader(val, batch_size=args.batch, shuffle=False, num_workers=8,
                             pin_memory=True)
     device = torch.device(args.device)
-    model = build_model(device)
+    model = build_model(device, model_name=args.model)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=0.05)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
     criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
@@ -71,7 +72,8 @@ def main():
     provenance = {'train_manifest': str(args.train_manifest), 'val_manifest': str(args.val_manifest),
                   'train_counts': Counter(train.labels()), 'val_counts': Counter(val.labels()),
                   'sampling': 'natural/shuffle; no class balancing', 'seed': SEED,
-                  'epochs': args.epochs, 'batch': args.batch, 'lr': args.lr}
+                  'epochs': args.epochs, 'batch': args.batch, 'lr': args.lr,
+                  'model': args.model}
     (args.out_dir / 'provenance.json').write_text(json.dumps(provenance, indent=2, default=dict))
 
     best_loss = float('inf'); started = time.time()

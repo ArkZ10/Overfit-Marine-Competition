@@ -42,8 +42,11 @@ def compute_probs(dump, weights, images_root, gt_path, device="cuda:0", batch=25
         print(f"reusing cached probabilities from {cache}")
         return np.load(cache), json.loads(idx_cache.read_text())
 
-    model = build_model(torch.device(device), pretrained=False)
     ck = torch.load(weights, map_location=device, weights_only=False)
+    model_name = ck.get("provenance", {}).get(
+        "model", "convnext_tiny.fb_in22k_ft_in1k")
+    model = build_model(torch.device(device), pretrained=False,
+                        model_name=model_name)
     model.load_state_dict(ck["model"])
     model.eval()
     print(f"loaded rescorer (val_acc={ck.get('acc')})")

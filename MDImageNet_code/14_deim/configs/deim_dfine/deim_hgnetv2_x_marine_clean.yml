@@ -1,0 +1,35 @@
+__include__: [
+  './deim_hgnetv2_x_coco.yml',
+]
+
+# Clean, official-data-only DEIM-D-FINE-X experiment. The only material model
+# change from clean E is HGNetv2-X / the X encoder width, initialized from the
+# public Apache-2.0 DEIM COCO checkpoint.
+num_classes: 34
+remap_mscoco_category: False
+
+output_dir: /root/Overfit-Marine-Competition/MDImageNet_code/14_deim/runs/deim_dfine_x_clean
+
+epoches: 32
+flat_epoch: 16
+no_aug_epoch: 6
+
+train_dataloader:
+  dataset:
+    img_folder: /root/Overfit-Marine-Competition/MDImageDataset2/train_dataset/images
+    ann_file: /root/Overfit-Marine-Competition/MDImageNet_code/18_official_rebuild/data/train.json
+    transforms:
+      policy:
+        epoch: [4, 16, 26]
+  collate_fn:
+    mixup_epochs: [4, 16]
+    stop_epoch: 26
+  total_batch_size: 8
+  num_workers: 8
+
+val_dataloader:
+  dataset:
+    img_folder: /root/Overfit-Marine-Competition/MDImageDataset2/train_dataset/images
+    ann_file: /root/Overfit-Marine-Competition/MDImageNet_code/18_official_rebuild/data/val.json
+  total_batch_size: 8
+  num_workers: 8

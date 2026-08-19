@@ -114,16 +114,56 @@ suspected unlabeled foreground as negative evidence, then learn the benchmark's 
 
 ## 4. Currently underway
 
+- [x] **GPU 0 — clean DEIM-D-FINE-X completed and passed.** The public Apache-2.0 COCO checkpoint
+  (`deim_dfine_x_coco.pth`, SHA-256 `e729436f96d95e78dbf67452bf3fb654cd5bed37de43067f5cf0aafb24d0fc7a`)
+  initializes a 61.7M-parameter HGNetv2-X detector on the unchanged clean split. Batch 8,
+  32 epochs, seed 42, and BF16 after FP16 produced NaNs. Best epoch 28 reproduced at
+  **0.7163 AP50 / 0.6198 AP50:95**. It passed the clean-E solo gate and the EFSX fusion gate.
+- [x] **GPU 1 — ConvNeXt-Base safe rescorer rejected.** This changed only the crop backbone from
+  ConvNeXt-Tiny to `convnext_base.fb_in22k_ft_in1k`; safe manifests, natural sampling, loss,
+  optimizer, and 20-epoch selection rule. Its frozen EFS `val_fit` result was **0.7419**, below
+  the Tiny rescorer's **0.7427**. It did not open `val_sel`; retain Tiny.
+
+### Phase 0 — DEIM-X integration completed 2026-08-19
+
+- X clean scores: full **0.7163**, fit **0.7033**, sel **0.7332** AP50.
+- X calibration fitted on `val_fit`: **T=0.5254**.
+- X size-conditioned proposal recall@0.50: **0.8936** below 0.1% image area, **0.9204** at
+  0.1--1%, **0.9731** at >=1%.
+- Frozen winner: **EFSX**, temperature normalization, IoU **0.65**, skip **0.001**, weights
+  **1.1/0.9/1.0/1.1**, `conf_type=avg`.
+- `val_fit`: **0.74629** vs EFS 0.73119, delta **+0.01510**.
+- One-time `val_sel`: **0.76351** vs EFS 0.74967, delta **+0.01384**.
+- Paired bootstrap (400): mean **+0.0139**, 95% CI **[+0.0060,+0.0232]**,
+  P(delta>0) **99.5%**.
+- Do not retune this EFSX recipe on `val_sel`. Phase 1 is the controlled 640 -> 1024 DEIM-X
+  resolution experiment.
+
+- [x] **GPU 0 — nnPU F fine-tune failed.** `rtmdet_l_marine_clean_pu.py` started from the
+  original clean-F epoch-39 checkpoint and replaces certain-background classification with an
+  RTMDet adaptation of the non-negative positive-unlabeled objectness risk. Official positive
+  QFL and regression were unchanged. Best was epoch 1: **0.652 AP50 / 0.547 AP50:95**;
+  it then degraded to 0.606/0.515. This is below original F 0.664/0.558. Reject.
+- [x] **GPU 1 — teacher-weighted F fine-tune failed.** `rtmdet_l_marine_clean_soft_teacher.py`
+  uses 7,464 low-threshold all-E/F/S consensus regions across 2,647 images. Still-background
+  anchors inside these regions retain weight 0.25 instead of hard-negative weight 1.0; the
+  regions never became hard positives or regression targets. Best was epoch 1:
+  **0.657 AP50 / 0.554 AP50:95**, below original F 0.664/0.558. Reject.
+- Both runs use the same clean-F checkpoint, seed, clean validation, LR, augmentation state,
+  and schedule. Neither cleared the solo-F gate, so no EFS replacement or `val_sel` evaluation
+  is authorized. The paper mechanisms are not validated for this RTMDet adaptation/dataset.
+
 - [x] Paired image-level bootstrap of frozen EF versus frozen EFS on clean `val_sel`:
   mean delta **+0.0234**, 95% CI **[+0.0161, +0.0323]**, P(delta>0) **100%** (400 resamples).
 - [x] Run epoch-34 S test inference and generate the frozen EFS submission:
   `12_ensemble/clean_efs_submission.csv` (145,589 rows, all 2,092 images; schema and bounds
-  validated). This file is ready for manual upload; leaderboard result is pending.
-- Controlled F missing-label retrain is running on GPU 0. Full-train E/F/S teacher dumps are
+  validated). Hidden-test AP50: **0.7175357**.
+- Controlled F missing-label retrain completed. Full-train E/F/S teacher dumps are
   complete. Calibrated all-three same-class consensus (score >=0.30, agreement IoU >=0.50,
   GT IoU <0.30) produced **806 ignore regions across 543 train images**, versus 28,956 official
-  annotations. The clean validation set is unchanged. The run passed epoch 1 iteration 100;
-  initial ETA was about 5.5 hours.
+  annotations. The clean validation set is unchanged. Best epoch 39 logged **0.667 AP50 /
+  0.564 AP50:95**, versus original F 0.664/0.558. Its frozen EFS replacement reduced
+  `val_fit` from **0.7312 to 0.7271 (-0.0041)**. Reject modified F and retain original F.
 - Safe crop-feature rescorer is running on GPU 1. Its supervised train set has **28,956
   official positives + 27,171 E/F/S-vetoed negatives**; **77,578 ambiguous consensus crops
   are excluded from loss**. `val_fit` has 1,644 positives + 1,513 safe negatives, with 4,467
@@ -132,9 +172,11 @@ suspected unlabeled foreground as negative evidence, then learn the benchmark's 
   Frozen EFS `val_fit` improved from **0.7312 to 0.7427 (+0.0115)** with alpha 0.5,
   background suppression on, and class reassignment off. The one-time frozen `val_sel`
   confirmation **passed: 0.7497 -> 0.7640 (+0.0143 AP50)**; AP50:95 improved 0.6499 ->
-  0.6599. Paired bootstrap is running. No further rescorer tuning is authorized on `val_sel`.
-  Frozen EFS test rescoring is running on GPU 1 over 268,488 candidates; once complete, create
-  and schema-check `clean_efs_safe_rescored_submission.csv` for manual upload.
+  0.6599. Paired bootstrap: mean **+0.0141**, 95% CI **[+0.0088,+0.0210]**, P(delta>0)
+  **100%** over 400 resamples. No further rescorer tuning is authorized on `val_sel`.
+  Test rescoring and submission validation are complete. Hidden-test AP50 is approximately
+  **0.729**, versus raw clean EFS **0.7175357**: roughly **+0.0115 hidden**. The rescorer
+  transferred; the remaining deficit is primarily in the base detector ensemble.
 
 ## 5. Work that can proceed now — not blocked by S
 
