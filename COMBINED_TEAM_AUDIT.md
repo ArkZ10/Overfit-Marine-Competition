@@ -234,9 +234,15 @@ Operational consequences:
 - [x] One-time untouched `val_sel`: **0.76351**, versus EFS **0.74967** (**+0.01384**).
 - [x] Paired 400-sample bootstrap on `val_sel`: mean delta **+0.0139**, 95% CI
   **[+0.0060, +0.0232]**, P(delta>0) **99.5%**.
+- [x] Applied the already-frozen safe ConvNeXt-Tiny rescorer to EFSX without retraining or
+  retuning. It improved `val_fit` **0.74629 -> 0.75287** (**+0.00658**) and the one-time
+  `val_sel` confirmation **0.76351 -> 0.77358** (**+0.01007**); `val_sel` AP50:95 improved
+  **0.66444 -> 0.67081**. Settings remain alpha 0.5, background suppression on, and no
+  class reassignment.
 
-**Verdict:** X passes both the solo and frozen-fusion gates. It is now a canonical member; do
-not retune EFSX on `val_sel`.
+**Verdict:** X passes both the solo and frozen-fusion gates. It is now a canonical member, and
+the existing safe Tiny rescorer also transfers positively to EFSX. Do not retune either EFSX
+or the rescorer on `val_sel`.
 
 ### Phase 1 — controlled resolution experiment
 
@@ -291,6 +297,19 @@ Priority after the resolution and cross-team gates:
 3. **DINOv3 offline teacher.** Consider for feature distillation or ambiguous-region vetoing,
    not automatic pseudo-label creation.
 4. Avoid another low-resolution detector whose likely errors overlap with the existing pool.
+
+#### Model Y launched 2026-08-19 by explicit team decision
+
+- **Architecture:** official DEIMv2-X, DINOv3 ViT-S+ backbone, 50.3M parameters.
+- **Controlled reason:** test a larger DINOv3 representation, not duplicate the teammate's
+  failed DEIMv2-L. The public X checkpoint reports 57.8 COCO AP versus 56.0 for L.
+- **Protocol:** exact official clean train/val IDs, 640 input, 32 epochs, BF16, physical batch
+  8, seed 42, public full COCO checkpoint, GPU 1.
+- **Smoke evidence:** full checkpoint/backbone load passed; validation forward pass passed;
+  training passed 300 optimizer steps with finite losses and about 13.1 GB peak allocated.
+- **Gate:** solo clean AP50 first, followed by `val_fit` calibration/member ablation. It is not
+  added to EFSX automatically and must not open `val_sel` unless it improves the frozen fit
+  pipeline.
 
 ## 8. What is settled and should not be repeated
 

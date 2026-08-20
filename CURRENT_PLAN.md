@@ -136,6 +136,11 @@ suspected unlabeled foreground as negative evidence, then learn the benchmark's 
 - One-time `val_sel`: **0.76351** vs EFS 0.74967, delta **+0.01384**.
 - Paired bootstrap (400): mean **+0.0139**, 95% CI **[+0.0060,+0.0232]**,
   P(delta>0) **99.5%**.
+- Frozen safe ConvNeXt-Tiny rescorer transferred to EFSX without retraining or retuning:
+  `val_fit` **0.74629 -> 0.75287** (**+0.00658**) and one-time `val_sel`
+  **0.76351 -> 0.77358** (**+0.01007**). AP50:95 on `val_sel` also improved
+  **0.66444 -> 0.67081**. Keep alpha 0.5, background suppression on, and class
+  reassignment off.
 - Do not retune this EFSX recipe on `val_sel`. Phase 1 is the controlled 640 -> 1024 DEIM-X
   resolution experiment.
 
@@ -333,6 +338,47 @@ is missing.
 - Reading an RTMDet-family run before epoch 32 as a final result.
 
 ## 14. Immediate execution order
+
+### Current override — post-FSY hidden result, 2026-08-20
+
+- Y standalone scored **0.7303453** hidden, but frozen **F+S+Y WBF + safe
+  ConvNeXt-Tiny rescorer scored 0.7530597**.  Y is therefore retained as a
+  complementary fusion member, not promoted as the best standalone model.
+- **GPU 0 is running Y-1024**, a 12-epoch resolution-adaptation fine-tune from
+  the clean Y `best_stg2.pth`.  The clean split, seed, detector, loss, and
+  optimizer family are fixed; input/evaluation size is 1024, physical batch is
+  2, BF16 is enabled, and learning rates are batch-scaled.  The final four
+  epochs disable mixing.  This is the controlled tiny-object experiment.
+- **Candidate Z was stopped after epoch 1**, a 133.6M-parameter DINOv3 ViT-B backbone
+  with a ViTDet-style Simple Feature Pyramid and Cascade R-CNN at up to 1024
+  short-side-equivalent scale.  It uses batch 1, two-step accumulation, BF16,
+  gradient checkpointing, AdamW, and only the official clean split. Epoch 1
+  scored only **0.0020 AP50**, and 85/397 logged metric windows contained NaN
+  box-regression losses/gradient norms. GPU 1 was released on 2026-08-20; do
+  not resume this checkpoint before diagnosing the regression path.
+- Both candidates must be calibrated and subjected to a complete member-set
+  ablation on `val_fit`.  A 640 and 1024 version of the same detector are
+  alternatives, not automatic simultaneous fusion members.  `val_sel` remains
+  closed until a candidate improves the frozen fit pipeline.
+
+Monitoring:
+
+```bash
+watch -n 5 nvidia-smi
+tail -f MDImageNet_code/19_deimv2/runs/deimv2_dinov3_x_clean_1024/log.txt
+tail -f $(find MDImageNet_code/20_dinov3_fpn/runs/cascade_rcnn_dinov3b_sfp_marine_1024 -name '*.log' | sort | tail -1)
+```
+
+### Current override — model Y started 2026-08-19
+
+- Explicit team direction authorized repeating the successful X-style gate with a different
+  large model. **DEIMv2-X / DINOv3 ViT-S+** is now training on GPU 1 from the public official
+  COCO checkpoint using only the clean official split.
+- Fixed setup: 640 input, 32 epochs, BF16, batch 8, seed 42. Model/checkpoint loading,
+  validation inference, and 300 finite optimizer steps passed; observed peak allocated memory
+  was about 13.1 GB.
+- This does not duplicate the teammate's weak DEIMv2-L. Y must pass standalone, calibration,
+  and `val_fit` member-ablation gates before any `val_sel` evaluation or submission.
 
 1. Keep clean S running on GPU 0.
 2. Use the available capacity for clean E/F auditing and safe crop-data/ranker infrastructure.

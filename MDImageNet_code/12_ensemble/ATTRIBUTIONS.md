@@ -21,6 +21,8 @@ external datasets, no test-time augmentation.
 | 7 | Copy-Paste mask extraction | `facebook/sam-vit-huge` | SA-1B | Segment Anything, via HuggingFace `transformers` | Apache-2.0 |
 | 6 | Detector F — RTMDet-L | `rtmdet_l_8xb32-300e_coco` | COCO 2017 | OpenMMLab mmdetection — https://github.com/open-mmlab/mmdetection | Apache-2.0 |
 | 5 | Detector D — D-FINE-L | `ustc-community/dfine-large-coco` | COCO 2017 | Architecture: official implementation in HuggingFace `transformers` (`models/d_fine`, © Baidu Inc. and HuggingFace). Weights: the authors' HF org (USTC), corresponding to https://github.com/Peterande/D-FINE | Apache-2.0 |
+| 8 | Candidate Y — DEIMv2-X / DINOv3 ViT-S+ | `Intellindust/DEIMv2_DINOv3_X_COCO` | COCO 2017; backbone initialized from DINOv3 LVD-1689M pretraining | Official DEIMv2 repository and Hugging Face checkpoint — https://github.com/Intellindust-AI-Lab/DEIMv2 | Apache-2.0 (DEIMv2); DINOv3 research licence under the organizer's updated non-commercial ruling |
+| 9 | Candidate Z — Cascade R-CNN / DINOv3 ViT-B SFP | `vit_base_patch16_dinov3.lvd1689m` | DINOv3 LVD-1689M pretraining; detection heads initialized locally | timm model registry / Meta DINOv3 | Apache-2.0 (MMDetection/timm code); DINOv3 research licence under the organizer's updated non-commercial ruling |
 
 Each was used as an initialization point only; every model was then fine-tuned end-to-end
 on the competition training data across the 34 source categories.
@@ -36,6 +38,7 @@ on the competition training data across the 34 source categories.
 | transformers | 5.12.1 | Detectors D/E (D-FINE, DEIM) architecture + weights | Apache-2.0 |
 | mmdet / mmcv / mmengine | 3.3.0 / 2.2.0 / 0.10.7 | Detector F (RTMDet) training + inference | Apache-2.0 |
 | DEIM (ShihuaHuang95/DEIM) | v1, CVPR 2025 | Detector E training scheme (Dense O2O + MAL) | Apache-2.0 |
+| DEIMv2 (Intellindust-AI-Lab/DEIMv2) | commit `add5bcdb499bf7b8a366bfeac1a47d3dc278de27` | Candidate Y training; DINOv3 + Spatial Tuning Adapter + DEIM | Apache-2.0 code; DINOv3 research licence applies to backbone weights |
 | ensemble-boxes | 1.0.9 | Weighted Boxes Fusion | MIT |
 | pycocotools | — | COCO-API mAP evaluation | BSD-2-Clause |
 | Pillow, NumPy | — | image and array handling | HPND / BSD-3-Clause |
@@ -49,7 +52,9 @@ on the competition training data across the 34 source categories.
 - **RTMDet** — Lyu et al., *RTMDet: An Empirical Study of Designing Real-Time Object
   Detectors*, 2022.
 - **DEIM** — Huang et al., *DEIM: DETR with Improved Matching for Fast Convergence*, CVPR 2025.
-  (v1 only; DEIMv2 was NOT used — it carries DINOv3.)
+- **DEIMv2** — Huang et al., *Real-Time Object Detection Meets DINOv3*, 2025. Candidate Y
+  uses the official X configuration and public full COCO checkpoint under the organizer's
+  updated permission for research/non-commercial DINOv3 use.
 - **Copy-Paste augmentation** — Ghiasi et al., *Simple Copy-Paste is a Strong Data
   Augmentation Method for Instance Segmentation*, CVPR 2021. Instance masks obtained with
   SAM (Kirillov et al., *Segment Anything*, ICCV 2023). No external images were introduced:
@@ -57,8 +62,10 @@ on the competition training data across the 34 source categories.
 - **D-FINE** — Peng et al., *D-FINE: Redefine Regression Task of DETRs as Fine-grained
   Distribution Refinement*, ICLR 2025.
 
-No model architecture was re-implemented. Upstream implementations were used unmodified;
-only data adapters, training loops, and evaluation code are our own.
+Candidate Z uses the upstream MMDetection Cascade R-CNN implementation and timm DINOv3
+backbone, joined by a small local ViTDet-style Simple Feature Pyramid adapter. Other model
+architectures use their upstream implementations unmodified; data adapters, training loops,
+evaluation code, and the candidate-Z pyramid adapter are local.
 
 ## Note on AGPL-3.0
 

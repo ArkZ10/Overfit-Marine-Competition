@@ -139,6 +139,14 @@ def predict_deim(weights: str, img_files, stem_to_id, config=None):
     return run_inference(weights, img_files, stem_to_id, config=config)
 
 
+def predict_deimv2(weights: str, img_files, stem_to_id, config=None):
+    import sys
+    sys.path.insert(0, str(PREDS_DIR.parent.parent / "19_deimv2"))
+    from predict_deimv2 import run_inference
+
+    return run_inference(weights, img_files, stem_to_id, config=config)
+
+
 def predict_rfdetr(weights: str, img_files, stem_to_id):
     import sys
     sys.path.insert(0, str(PREDS_DIR.parent.parent / "17_rfdetr"))
@@ -149,7 +157,7 @@ def predict_rfdetr(weights: str, img_files, stem_to_id):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--model-type", choices=["yolo", "rtdetr", "frcnn", "dfine", "deim", "rtmdet", "rfdetr"], required=True)
+    ap.add_argument("--model-type", choices=["yolo", "rtdetr", "frcnn", "dfine", "deim", "deimv2", "rtmdet", "rfdetr"], required=True)
     ap.add_argument("--weights", required=True)
     ap.add_argument("--name", required=True)
     ap.add_argument("--split", default="val", help="label for the dump; 'val' uses the GT manifest")
@@ -181,6 +189,8 @@ def main():
         dets = predict_dfine(args.weights, img_files, stem_to_id, config=args.model_config)
     elif args.model_type == "deim":
         dets = predict_deim(args.weights, img_files, stem_to_id, config=args.model_config)
+    elif args.model_type == "deimv2":
+        dets = predict_deimv2(args.weights, img_files, stem_to_id, config=args.model_config)
     elif args.model_type == "rtmdet":
         dets = predict_rtmdet(args.weights, img_files, stem_to_id, tta=args.tta,
                               config=args.model_config)
